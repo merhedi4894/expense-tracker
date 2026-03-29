@@ -13,11 +13,12 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // --- MongoDB Connection ---
-const MONGO_URI = process.env.MONGO_URI; // আমরা Render থেকে এটি পাস করব
+const MONGO_URI = process.env.MONGO_URI;
 
+// ডাটাবেস কানেক্ট হচ্ছে কিনা চেক করা
 mongoose.connect(MONGO_URI)
-  .then(() => console.log('MongoDB Connected!'))
-  .catch(err => console.log(err));
+  .then(() => console.log('MongoDB Connected Successfully!'))
+  .catch(err => console.log('MongoDB Connection Error:', err));
 
 // --- Schema ---
 const expenseSchema = new mongoose.Schema({
@@ -31,7 +32,7 @@ const Expense = mongoose.model('Expense', expenseSchema);
 
 // --- Admin Credentials ---
 const ADMIN_USER = 'admin';
-const ADMIN_PASS = '123456'; // আপনি চাইলে এখানে পাসওয়ার্ড বদলে ফেলতে পারেন
+const ADMIN_PASS = '123456';
 
 // --- Routes ---
 
@@ -45,10 +46,16 @@ app.post('/api/login', (req, res) => {
     }
 });
 
-// Add Expense
+// Add Expense (এখানে এরর ডিটেইলস যোগ করা হয়েছে)
 app.post('/api/add-expense', async (req, res) => {
     try {
         const { description, amount, date } = req.body;
+        
+        // চেক করা ডাটা আসছে কিনা
+        if(!description || !amount || !date) {
+            return res.json({ success: false, message: 'সব তথ্য পূরণ করুন!' });
+        }
+
         const d = new Date(date);
         
         const newExpense = new Expense({
@@ -61,22 +68,27 @@ app.post('/api/add-expense', async (req, res) => {
         
         await newExpense.save();
         res.json({ success: true, message: 'খরচ সেভ হয়েছে' });
-   } catch (error) {
-    console.error("Save Error:", error); // এই লাইনটি যোগ হলো
-    res.status(500).json({ success: false, message: error.message }); // এরর মেসেজ দেখাবে
-}
+    } catch (error) {
+        // এই লাইনটি ব্রাউজারে আসল এররটি দেখাবে
+        console.error("Save Error:", error);
+        res.json({ success: false, message: `Server Error: ${error.message}` });
+    }
 });
 
 // Get Expenses
 app.get('/api/expenses', async (req, res) => {
-    const { month, year } = req.query;
-    let query = {};
-    if (month) query.month = parseInt(month);
-    if (year) query.year = parseInt(year);
+    try {
+        const { month, year } = req.query;
+        let query = {};
+        if (month) query.month = parseInt(month);
+        if (year) query.year = parseInt(year);
 
-    const expenses = await Expense.find(query).sort({ date: -1 });
-    const total = expenses.reduce((sum, item) => sum + item.amount, 0);
-    res.json({ expenses, total });
+        const expenses = await Expense.find(query).sort({ date: -1 });
+        const total = expenses.reduce((sum, item) => sum + item.amount, 0);
+        res.json({ expenses, total });
+    } catch (error) {
+        res.json({ expenses: [], total: 0 });
+    }
 });
 
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
