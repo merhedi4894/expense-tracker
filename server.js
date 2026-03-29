@@ -61,9 +61,10 @@ app.post('/api/add-expense', async (req, res) => {
         
         await newExpense.save();
         res.json({ success: true, message: 'খরচ সেভ হয়েছে' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'সার্ভার এরর' });
-    }
+   } catch (error) {
+    console.error("Save Error:", error); // এই লাইনটি যোগ হলো
+    res.status(500).json({ success: false, message: error.message }); // এরর মেসেজ দেখাবে
+}
 });
 
 // Get Expenses
